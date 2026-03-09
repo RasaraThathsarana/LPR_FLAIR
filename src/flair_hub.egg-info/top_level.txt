@@ -1,0 +1,2 @@
+flair_hub
+flair_zonal_detection

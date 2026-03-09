@@ -1,9 +1,11 @@
 models: 
+    use_gradient_checkpointing: True
 
     monotemp_model: 
 
         arch: 'swin_base_patch4_window12_384-upernet' 
         new_channels_init_mode: 'random' # [copy_first / copy_second / copy_third / random]
+        use_LPR_decoder: True
 
     multitemp_model: 
     

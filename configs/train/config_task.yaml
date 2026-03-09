@@ -1,36 +1,32 @@
 # SLURM
 
 paths :   
-
     out_folder: ../results/
-    out_model_name: test-lib
+    out_model_name: Frozen_plus_unfrozen_backbone
 
-    train_csv: ../toy/TRAIN_FLAIR-INC_TOY.csv
-    val_csv: ../toy/VALID_FLAIR-INC_TOY.csv
-    test_csv: ../toy/TEST_FLAIR-INC_TOY.csv
-    global_mtd_folder: FLAIR-HUB/GLOBAL_ALL_MTD/
-    ckpt_model_path: 
-
+    train_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_TRAIN.csv
+    val_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_VALID.csv
+    test_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_TEST.csv
+    global_mtd_folder: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/FLAIR-HUB_download/data/GLOBAL_ALL_MTD/
+    ckpt_model_path: /home/cse/Documents/Rasara/FLAIR/FLAIR-ORG/results/Frozen_plus_unfrozen_backbone/checkpoints/ckpt-epoch=01-val_loss=0.75_Frozen_plus_unfrozen_backbone.ckpt #/home/cse/Documents/Rasara/FLAIR/FLAIR-ORG/results/Exp3/checkpoints/ckpt-epoch=06-val_loss=0.75_Exp3.ckpt #/home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/weight_files/FLAIR-HUB_LC-A_RGB_swinbase-upernet.safetensors
 
 tasks: 
-
     train: True
     train_tasks: 
         init_weights_only_from_ckpt: False
-        resume_training_from_ckpt: False
+        resume_training_from_ckpt: True
+        train_backbone: True
 
     predict: True
     write_files: True
     georeferencing_output: True
-
     metrics_only: False
 
 hyperparams:
-
     num_epochs: 150
-    batch_size: 5
+    batch_size: 6
     seed: 2025
-    learning_rate: 0.00005
+    learning_rate: 0.00006
 
     optimizer: adamw  # [sgd / adam / adamw]
     optim_weight_decay: 0.01
@@ -38,14 +34,14 @@ hyperparams:
 
     scheduler: one_cycle_lr #  [one_cycle_lr / reduce_on_plateau / cycle_then_plateau]
     warmup_fraction: 0.2 # if using one_cycle_lr. [0-1]
-    plateau_patience: 10 # if using cycle_then_plateau
+    plateau_patience: 5 # if using cycle_then_plateau
 
 hardware:
     accelerator: 'gpu'
     num_nodes: 1
     gpus_per_node: 1
     strategy: 'auto' # ddp_find_unused_parameters_true if num_nodes > 1
-    num_workers: 0
+    num_workers: 4
 
 saving:   
     ckpt_save_also_last: True

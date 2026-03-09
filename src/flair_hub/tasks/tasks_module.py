@@ -144,6 +144,14 @@ class SegmentationTask(pl.LightningModule):
         apply_mod_dropout = self.mod_dropout if training else False
         dict_logits_task, dict_logits_aux = self.forward(batch, apply_mod_dropout)
 
+        # Normalize logits output: model may return a Tensor for single-task setups
+        if isinstance(dict_logits_task, torch.Tensor):
+            labels = self.config.get('labels', [])
+            if len(labels) == 1:
+                dict_logits_task = {labels[0]: dict_logits_task}
+            else:
+                dict_logits_task = {labels[0] if labels else 'task_0': dict_logits_task}
+
         loss_sum = 0
         all_preds, all_targets = {}, {}
 
@@ -191,6 +199,18 @@ class SegmentationTask(pl.LightningModule):
             return stacked_loss
 
         return torch.tensor(0.0, device=targets.device, dtype=torch.float32)
+
+    def _ensure_task_dict(self, logits_tasks):
+        """
+        Ensure the logits_tasks object is a dict mapping task name -> logits tensor.
+        Some model codepaths return a single Tensor when only one task is configured.
+        """
+        if isinstance(logits_tasks, torch.Tensor):
+            labels = self.config.get('labels', [])
+            if len(labels) == 1:
+                return {labels[0]: logits_tasks}
+            return {labels[0] if labels else 'task_0': logits_tasks}
+        return logits_tasks
 
     def _check_for_invalid_loss(self, loss, task, is_aux=False):
         """
@@ -283,7 +303,9 @@ class SegmentationTask(pl.LightningModule):
             batch (dict): Input batch with labels.
             task (str): Task name.
         """
-        logits = self.forward(batch)[0][task]
+        dict_logits_task, _ = self.forward(batch)
+        dict_logits_task = self._ensure_task_dict(dict_logits_task)
+        logits = dict_logits_task[task]
         targets = batch[task].to(self.device)
         targets = torch.argmax(targets, dim=1) if targets.ndim == 4 else targets
 
@@ -335,6 +357,7 @@ class SegmentationTask(pl.LightningModule):
 
     def predict_step(self, batch, batch_idx, dataloader_idx=0):
         dict_logits_task, _ = self.forward(batch, apply_mod_dropout=False)
+        dict_logits_task = self._ensure_task_dict(dict_logits_task)
         return {
             f"preds_{task}": torch.argmax(torch.softmax(logits, dim=1), dim=1)
             for task, logits in dict_logits_task.items()

@@ -1,35 +1,28 @@
+import torch
 import torch.nn as nn
 import segmentation_models_pytorch as smp
+from torch.utils.checkpoint import checkpoint
 
 from typing import Dict, Any
-
 
 class DecoderWrapper(nn.Module):
     """Handles sequential execution of the decoder and segmentation head."""
     
-    def __init__(self, decoder: nn.Module, segmentation_head: nn.Module) -> None:
-        """
-        Initialize the DecoderWrapper with a decoder and a segmentation head.
-        
-        Args:
-            decoder (nn.Module): The decoder module.
-            segmentation_head (nn.Module): The segmentation head module.
-        """
+    def __init__(self, decoder: nn.Module, segmentation_head: nn.Module, use_checkpoint: bool = False) -> None:
         super().__init__()
         self.decoder = decoder
         self.segmentation_head = segmentation_head
+        self.use_checkpoint = use_checkpoint
 
-    def forward(self, *features: Any) -> nn.Module:
-        """
-        Perform a forward pass through the decoder and segmentation head.
-        Args:
-            *features (Any): Feature maps to be passed to the decoder.
-        Returns:
-            nn.Module: Output after passing through the segmentation head.
-        """
+    def _forward_impl(self, *features: Any) -> torch.Tensor:
         decoder_output = self.decoder(*features)  
         return self.segmentation_head(decoder_output)
 
+    def forward(self, *features: Any) -> torch.Tensor:
+        # Apply gradient checkpointing if enabled and gradients are required
+        if self.use_checkpoint and any(isinstance(f, torch.Tensor) and f.requires_grad for f in features):
+            return checkpoint(self._forward_impl, *features, use_reentrant=False)
+        return self._forward_impl(*features)
 
 class FLAIR_Monotemp(nn.Module):
     """Monotemporal FLAIR model for segmentation."""
@@ -42,19 +35,6 @@ class FLAIR_Monotemp(nn.Module):
         img_size: int = 512, 
         return_type: str = 'encoder'
     ) -> None:
-        """
-        Initialize the FLAIR_Monotemp model with the provided configuration.
-
-        Args:
-            config (Dict[str, Any]): Configuration dictionary for model setup.
-            channels (int): Number of input channels (default is 3 for RGB).
-            classes (int): Number of output classes for segmentation.
-            img_size (int): Image size for model input.
-            return_type (str): Specifies the model return type ('encoder', 'decoder').
-
-        Raises:
-            AssertionError: If `return_type` is not one of ['encoder', 'decoder'].
-        """
         super().__init__()
 
         self.return_type = return_type
@@ -90,8 +70,11 @@ class FLAIR_Monotemp(nn.Module):
                     classes=classes,
                     in_channels=channels,
                 )
-
+        
+        # Read the gradient checkpointing config flag
+        use_checkpoint = config.get('models', {}).get('use_gradient_checkpointing', False)
+        
         if self.return_type == 'encoder':
             self.seg_model = self.seg_model.encoder
         elif self.return_type == 'decoder':
-            self.seg_model = DecoderWrapper(self.seg_model.decoder, self.seg_model.segmentation_head)
+            self.seg_model = DecoderWrapper(self.seg_model.decoder, self.seg_model.segmentation_head, use_checkpoint=use_checkpoint)
