@@ -3,18 +3,37 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 import math
+from torch.cuda.amp import autocast
 
 class BasicBlock(nn.Module):
-    expansion = 1
+    expansion = 4
 
     def __init__(self, in_channels, out_channels, stride=1, use_checkpoint=False):
         super().__init__()
         self.use_checkpoint = use_checkpoint
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
 
+        mid_channels = out_channels // self.expansion
+
+        # 1×1 reduction
+        self.conv1 = nn.Conv2d(in_channels, mid_channels, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(mid_channels)
+
+        # 3×3 spatial conv
+        self.conv2 = nn.Conv2d(
+            mid_channels,
+            mid_channels,
+            kernel_size=3,
+            stride=stride,
+            padding=1,
+            bias=False
+        )
+        self.bn2 = nn.BatchNorm2d(mid_channels)
+
+        # 1×1 expansion
+        self.conv3 = nn.Conv2d(mid_channels, out_channels, kernel_size=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(out_channels)
+
+        # projection if shape mismatch
         self.proj = None
         if stride != 1 or in_channels != out_channels:
             self.proj = nn.Sequential(
@@ -24,12 +43,21 @@ class BasicBlock(nn.Module):
 
     def _forward_impl(self, x):
         identity = x
+
         out = F.relu(self.bn1(self.conv1(x)), inplace=True)
-        out = self.bn2(self.conv2(out))
+        out = F.relu(self.bn2(self.conv2(out)), inplace=True)
+        out = self.bn3(self.conv3(out))
+
         if self.proj is not None:
             identity = self.proj(identity)
+
         out += identity
         return F.relu(out, inplace=True)
+
+    def forward(self, x):
+        if self.use_checkpoint and x.requires_grad:
+            return checkpoint(self._forward_impl, x, use_reentrant=False)
+        return self._forward_impl(x)
 
     def forward(self, x):
         if self.use_checkpoint and x.requires_grad:
@@ -160,13 +188,25 @@ class LocalPatchRefiner(nn.Module):
         return torch.cat([emb_sin, emb_cos], dim=1)
 
     def _attention_block(self, q_normed, k_normed, v_normed):
-        Q = self.q_proj(q_normed)
-        K = self.k_proj(k_normed)
-        V = self.v_proj(v_normed)
-        attn_logits = (Q @ K.t()) * (self.hidden_dim ** -0.5)
-        attn_weights = torch.tanh(attn_logits) 
-        x_attn = attn_weights * V
-        return self.out_proj(x_attn)
+    # Force fp32 for attention computation to maintain numerical stability
+        with autocast(enabled=False):
+
+            q_normed = q_normed.float()
+            k_normed = k_normed.float()
+            v_normed = v_normed.float()
+            
+            Q = self.q_proj(q_normed)
+            K = self.k_proj(k_normed)
+            V = self.v_proj(v_normed)
+
+            attn_logits = (Q @ K.t()) * (self.hidden_dim ** -0.5)
+            attn_weights = torch.tanh(attn_logits)
+
+            x_attn = attn_weights * V
+
+            out = self.out_proj(x_attn)
+
+        return out
 
     def forward(self, img, global_tokens):
         B, C, H, W = img.shape

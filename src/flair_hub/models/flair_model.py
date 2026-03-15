@@ -177,7 +177,7 @@ class FLAIR_HUB_Model(nn.Module):
         if self.use_LPR_decoder:
             self.lpr_adapter = LPRAdapter(use_checkpoint=use_checkpoint)
             self.refiner = LocalPatchRefiner(
-                global_dim=768, in_channels=3, patch_size=16, hidden_dim=64, cnn_dim=32,
+                global_dim=512, in_channels=3, patch_size=16, hidden_dim=64, cnn_dim=32,
                 use_checkpoint=use_checkpoint
             )
             self.refiner_head = nn.Sequential(
