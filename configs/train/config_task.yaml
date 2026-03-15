@@ -2,31 +2,30 @@
 
 paths :   
     out_folder: ../results/
-    out_model_name: Frozen_plus_unfrozen_backbone
+    out_model_name: Tiny_lpr_exp1
 
     train_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_TRAIN.csv
     val_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_VALID.csv
-    test_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_TEST.csv
+    test_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_VALID.csv
     global_mtd_folder: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/FLAIR-HUB_download/data/GLOBAL_ALL_MTD/
-    ckpt_model_path: /home/cse/Documents/Rasara/FLAIR/FLAIR-ORG/results/Frozen_plus_unfrozen_backbone/checkpoints/ckpt-epoch=01-val_loss=0.75_Frozen_plus_unfrozen_backbone.ckpt #/home/cse/Documents/Rasara/FLAIR/FLAIR-ORG/results/Exp3/checkpoints/ckpt-epoch=06-val_loss=0.75_Exp3.ckpt #/home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/weight_files/FLAIR-HUB_LC-A_RGB_swinbase-upernet.safetensors
-
+    ckpt_model_path: 
 tasks: 
     train: True
     train_tasks: 
         init_weights_only_from_ckpt: False
-        resume_training_from_ckpt: True
+        resume_training_from_ckpt: False
         train_backbone: True
 
     predict: True
     write_files: True
-    georeferencing_output: True
+    georeferencing_output: False
     metrics_only: False
 
 hyperparams:
-    num_epochs: 150
-    batch_size: 6
+    num_epochs: 15
+    batch_size: 15
     seed: 2025
-    learning_rate: 0.00006
+    learning_rate: 0.0001
 
     optimizer: adamw  # [sgd / adam / adamw]
     optim_weight_decay: 0.01
@@ -42,13 +41,14 @@ hardware:
     gpus_per_node: 1
     strategy: 'auto' # ddp_find_unused_parameters_true if num_nodes > 1
     num_workers: 4
+    precision: '16-mixed'  # Enable mixed precision training
 
 saving:   
     ckpt_save_also_last: True
     ckpt_weights_only: False
     ckpt_monitor: 'val_miou'
     ckpt_monitor_mode: 'max'
-    ckpt_earlystopping_patience: 20
+    ckpt_earlystopping_patience: 3
     cp_csv_and_conf_to_output: True
     enable_progress_bar: True
     progress_rate: 10

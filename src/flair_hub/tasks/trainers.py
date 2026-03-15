@@ -87,6 +87,7 @@ def train(config: Dict[str, Any], data_module: Any, seg_module: nn.Module, out_d
         callbacks=callbacks,
         logger=loggers,
         enable_progress_bar=config['saving']["enable_progress_bar"],
+        precision=config['hardware'].get("precision", "32-true"),
     )
 
     if config['tasks']['train_tasks']['resume_training_from_ckpt']:
@@ -126,6 +127,7 @@ def predict(config: Dict[str, Any], data_module: Any, seg_module: nn.Module, out
         callbacks=[writer_callback],
         enable_progress_bar=config['saving']["enable_progress_bar"],
         logger=False,
+        precision=config['hardware'].get("precision", "32-true"),
     )
 
     trainer.predict(seg_module, datamodule=data_module, return_predictions=False)
