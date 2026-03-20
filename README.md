@@ -1,9 +1,10 @@
-LPR_FLAIR
+# LPR_FLAIR
 
-Execution Instructions
+## Quick Start
 
-Run the following commands in order to set up the environment and execute the code:
+Execute the following commands to set up the Conda environment and run the project:
 
+```bash
 conda create -n FLAIRHUB python=3.11
 conda activate FLAIRHUB
 cd LPR_FLAIR
