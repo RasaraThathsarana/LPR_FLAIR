@@ -4,7 +4,7 @@
 source /opt/conda/etc/profile.d/conda.sh
 
 # Create env if not exists
-conda env list | grep -q FLAIRHUB || conda create -n FLAIRHUB python=3.10 -y
+conda create -n FLAIRHUB python=3.10
 
 # Activate env
 conda activate FLAIRHUB || exit 1
