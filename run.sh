@@ -7,7 +7,7 @@ source /opt/conda/etc/profile.d/conda.sh
 conda create -n FLAIRHUB python=3.10
 
 # Activate env
-conda activate FLAIRHUB || exit 1
+conda activate FLAIRHUB
 
 # 🔽 Unzip your specific file
 unzip -o FLAIR-HUB_FULL.zip -d csv/
