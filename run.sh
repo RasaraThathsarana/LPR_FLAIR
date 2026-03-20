@@ -5,6 +5,8 @@ source ~/.bashrc
 # Unzip your specific file
 unzip -o FLAIR-HUB_FULL.zip -d csv/
 
+pip install huggingface_hub
+
 python flair-hub-HF-dl.py
 
 for f in *.zip; do unzip "$f"; done
