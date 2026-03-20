@@ -7,6 +7,8 @@ unzip -o FLAIR-HUB_FULL.zip -d csv/
 
 pip install huggingface_hub
 
+pip install -e . 
+
 python flair-hub-HF-dl.py
 
 for f in *.zip; do unzip "$f"; done
