@@ -14,5 +14,5 @@ python flair-hub-HF-dl.py
 for f in *.zip; do unzip "$f"; done
 
 for i in {1..5}; do
-    flairhub --config configs/train/ --out_model_name Test_$i
+    flairhub --config configs/train/ --name Test_$i
 done
