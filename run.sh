@@ -13,7 +13,7 @@ pip install -e .
 
 python flair-hub-HF-dl.py
 
-for f in FLAIR-HUB_download/data/*.zip; do unzip "$f" && rm "$f" -d FLAIR-HUB_download/data/; done
+for f in FLAIR-HUB_download/data/*.zip; do unzip "$f" -d FLAIR-HUB_download/data/ && rm "$f"; done
 
 for i in {1..5}; do
     flairhub --config configs/train/ --name Test_$i
