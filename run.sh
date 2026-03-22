@@ -6,6 +6,8 @@ source ~/.bashrc
 unzip -o FLAIR-HUB_FULL.zip -d csv/
 
 sed -i 's/;/,/g' csv/FLAIR-HUB_TRAIN.csv csv/FLAIR-HUB_VALID.csv csv/FLAIR-HUB_TEST.csv
+DATA_PATH=$(realpath --relative-to="$(pwd)" FLAIR-HUB_download/data)
+sed -i "s|\.\./|${DATA_PATH}/|g" csv/FLAIR-HUB_*.csv
 
 pip install huggingface_hub
 
