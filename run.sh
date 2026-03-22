@@ -5,6 +5,8 @@ source ~/.bashrc
 # Unzip your specific file
 unzip -o FLAIR-HUB_FULL.zip -d csv/
 
+sed -i 's/;/,/g' csv/FLAIR-HUB_TRAIN.csv csv/FLAIR-HUB_VALID.csv csv/FLAIR-HUB_TEST.csv
+
 pip install huggingface_hub
 
 pip install -e . 
