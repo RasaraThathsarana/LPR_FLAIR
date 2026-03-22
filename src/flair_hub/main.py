@@ -13,7 +13,7 @@ from flair_hub.utils.config_display import print_recap
 
 argParser = argparse.ArgumentParser()
 argParser.add_argument("--config", help="Path to the .yaml config file", required=True)
-argParser.add_argument("--out_model_name", help="Name of the output model", required=False)
+argParser.add_argument("--name", help="Name of the experiment", required=True)
 
 
 def main():
@@ -24,15 +24,13 @@ def main():
 
     args = argParser.parse_args()
     config, out_dir = setup_environment(args)
-    if args.out_model_name:
-        config['paths']['out_model_name'] = args.out_model_name
-        out_dir = Path(config['paths']["out_folder"], config['paths']["out_model_name"])
     sys.stdout = Logger(
         Path(config['paths']["out_folder"], config['paths']["out_model_name"], f'flair-compute{config["paths"]["out_model_name"]}.log').as_posix())
 
     start_msg()
 
     # Define datasets
+    config['paths']['out_model_name'] = config['paths']['out_model_name'] + "_" + args.name
     dict_train, dict_val, dict_test = get_datasets(config)
     print_recap(config, dict_train, dict_val, dict_test)
 
