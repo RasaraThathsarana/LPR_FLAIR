@@ -10,7 +10,6 @@ DATA_PATH=$(realpath --relative-to="$(pwd)" FLAIR-HUB_download/data)
 sed -i "s|\.\./|${DATA_PATH}/|g" csv/FLAIR-HUB_*.csv
 
 pip install huggingface_hub
-export HF_TOKEN="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"
 
 pip install -e . 
 
