@@ -25,13 +25,13 @@ def main():
     num = random.randint(1, 1000)
     args = argParser.parse_args()
     config, out_dir = setup_environment(args)
+    config['paths']['out_model_name'] = config['paths']['out_model_name'] + "_" + args.name
     sys.stdout = Logger(
         Path(config['paths']["out_folder"], config['paths']["out_model_name"], f'flair-compute{config["paths"]["out_model_name"]}.log').as_posix())
 
     start_msg()
 
     # Define datasets
-    config['paths']['out_model_name'] = config['paths']['out_model_name'] + "_" + args.name
     config['hyperparams']['seed'] = num
     dict_train, dict_val, dict_test = get_datasets(config)
     print_recap(config, dict_train, dict_val, dict_test)
