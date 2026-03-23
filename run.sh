@@ -8,7 +8,6 @@ fi
 if [ -z "$TMUX" ]; then
     SCRIPT_PATH="$(realpath "$0")"
     tmux new -s flair "bash '$SCRIPT_PATH'; exec bash"
-    exit 0
 fi
 
 source ~/.bashrc
