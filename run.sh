@@ -7,7 +7,9 @@ fi
 
 if [ -z "$TMUX" ]; then
     SCRIPT_PATH="$(realpath "$0")"
-    tmux new -s flair "bash '$SCRIPT_PATH'; exec bash"
+    tmux new-session -d -s flair_training
+    tmux send-keys -t flair_training "bash '$SCRIPT_PATH'" C-m
+    exit 0
 fi
 
 source ~/.bashrc
