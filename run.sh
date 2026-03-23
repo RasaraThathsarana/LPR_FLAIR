@@ -13,7 +13,6 @@ fi
 source ~/.bashrc
 
 conda activate FLAIRHUB
-cd LPR_FLAIR
 
 unzip -o FLAIR-HUB_FULL.zip -d csv/
 
