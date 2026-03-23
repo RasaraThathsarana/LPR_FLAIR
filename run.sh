@@ -6,12 +6,13 @@ if ! command -v tmux &> /dev/null; then
 fi
 
 if [ -z "$TMUX" ]; then
-    tmux new-session -d -s flair_training "bash $0; exec bash"
+    SCRIPT_PATH="$(realpath "$0")"
+    tmux new-session -d -s flair_training "bash '$SCRIPT_PATH'; exec bash"
     exit 0
 fi
 
 source ~/.bashrc
-
+eval "$(conda shell.bash hook)"
 conda activate FLAIRHUB
 
 unzip -o FLAIR-HUB_FULL.zip -d csv/
