@@ -1,19 +1,20 @@
 #!/bin/bash
 set -e
 
-# Install Miniconda if not exists
+echo "===== SETUP START ====="
+
+# Install Miniconda if not installed
 if ! command -v conda &> /dev/null; then
     echo "Installing Miniconda..."
-    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     bash Miniconda3-latest-Linux-x86_64.sh -b
     export PATH="$HOME/miniconda3/bin:$PATH"
 fi
 
+# Enable conda
 eval "$(conda shell.bash hook)"
 
-# Create env
-conda env create -f environment.yml || echo "Env already exists"
+# Create env (safe if already exists)
+conda env create -f environment.yml || echo "Environment already exists"
 
-conda activate flairhub
-
-echo "Setup complete!"
+echo "===== SETUP DONE ====="
