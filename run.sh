@@ -1,36 +1,48 @@
 #!/bin/bash
+set -e  # stop on error
 
-if ! command -v tmux &> /dev/null; then
-    sudo apt-get update
-    sudo apt-get install -y tmux
-fi
+LOG_FILE="train.log"
 
-if [ -z "$TMUX" ]; then
-    SCRIPT_PATH="$(realpath "$0")"
-    tmux new-session -d -s flair_training
-    tmux send-keys -t flair_training "bash '$SCRIPT_PATH'" C-m
-    exit 0
-fi
+echo "Starting script..." | tee -a $LOG_FILE
 
-source ~/.bashrc
+# Activate conda safely
 eval "$(conda shell.bash hook)"
-conda activate FLAIRHUB
+conda activate flairhub
 
-unzip -o FLAIR-HUB_FULL.zip -d csv/
+# Install project (safe repeat)
+pip install -e .
 
-sed -i 's/;/,/g' csv/FLAIR-HUB_TRAIN.csv csv/FLAIR-HUB_VALID.csv csv/FLAIR-HUB_TEST.csv
-
+# Install extra deps
 pip install huggingface_hub
 
-pip install -e . 
+# Check dataset
+if [ ! -f "FLAIR-HUB_FULL.zip" ]; then
+    echo "Dataset zip not found!" | tee -a $LOG_FILE
+    exit 1
+fi
 
-python flair-hub-HF-dl.py
+# Extract dataset safely
+mkdir -p csv
+unzip -o FLAIR-HUB_FULL.zip -d csv/ >> $LOG_FILE 2>&1
 
-for f in FLAIR-HUB_download/data/*.zip; do unzip "$f" -d FLAIR-HUB_download/data/ && rm "$f"; done
+# Fix CSV format (only once)
+if [ ! -f "csv/.processed" ]; then
+    sed -i 's/;/,/g' csv/FLAIR-HUB_*.csv
+    touch csv/.processed
+fi
 
-DATA_PATH=$(realpath --relative-to="$(pwd)" FLAIR-HUB_download/data)
-sed -i "s|\.\./|${DATA_PATH}/|g" csv/FLAIR-HUB_*.csv
+# Download HF data
+python flair-hub-HF-dl.py >> $LOG_FILE 2>&1
 
-for i in {1..5}; do
-    flairhub --config configs/train/ --name Test_$i
+# Unzip downloaded files
+for f in FLAIR-HUB_download/data/*.zip; do
+    unzip -o "$f" -d FLAIR-HUB_download/data/
 done
+
+# Train
+for i in {1..5}; do
+    echo "Starting run $i" | tee -a $LOG_FILE
+    flairhub --config configs/train/ --name Test_$i >> $LOG_FILE 2>&1
+done
+
+echo "Training completed!" | tee -a $LOG_FILE
