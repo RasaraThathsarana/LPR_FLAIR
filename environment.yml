@@ -1,4 +1,4 @@
-name: flairhub
+name: FLAIRHUB
 channels:
   - conda-forge
 dependencies:
