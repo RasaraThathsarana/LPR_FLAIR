@@ -1,5 +1,6 @@
 import argparse
 import sys
+import random
 
 from pathlib import Path
 
@@ -21,7 +22,7 @@ def main():
     Main function to set up the training and prediction process. It reads the config file, sets up the output folder, 
     initiates the training and prediction stages, and tracks emissions if enabled.
     """
-
+    num = random.randint(1, 1000)
     args = argParser.parse_args()
     config, out_dir = setup_environment(args)
     sys.stdout = Logger(
@@ -31,6 +32,7 @@ def main():
 
     # Define datasets
     config['paths']['out_model_name'] = config['paths']['out_model_name'] + "_" + args.name
+    config['hyperparams']['seed'] = num
     dict_train, dict_val, dict_test = get_datasets(config)
     print_recap(config, dict_train, dict_val, dict_test)
 
