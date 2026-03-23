@@ -35,6 +35,10 @@ for f in FLAIR-HUB_download/data/*.zip; do
     unzip -o "$f" -d FLAIR-HUB_download/data/ && rm "$f";
 done
 
+DATA_PATH=$(realpath --relative-to="$(pwd)" FLAIR-HUB_download/data)
+sed -i "s|\.\./|${DATA_PATH}/|g" csv/FLAIR-HUB_*.csv
+
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 # TRAINING (IMPORTANT: SHOW LIVE LOGS)
 echo "===== TRAINING START ====="
 
