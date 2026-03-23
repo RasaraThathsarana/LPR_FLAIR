@@ -32,7 +32,7 @@ python flair-hub-HF-dl.py
 # Unzip downloaded files
 echo "Unzipping downloaded files..."
 for f in FLAIR-HUB_download/data/*.zip; do
-    unzip -o "$f" -d FLAIR-HUB_download/data/
+    unzip -o "$f" -d FLAIR-HUB_download/data/ && rm "$f";
 done
 
 # TRAINING (IMPORTANT: SHOW LIVE LOGS)
