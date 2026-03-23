@@ -2,7 +2,7 @@
 
 paths :   
     out_folder: ../results/
-    out_model_name: Tiny_lpr_exp1
+    out_model_name: FLAIR
 
     train_csv: csv/FLAIR-HUB_TRAIN.csv
     val_csv: csv/FLAIR-HUB_VALID.csv
@@ -13,7 +13,7 @@ tasks:
     train: True
     train_tasks: 
         init_weights_only_from_ckpt: False
-        resume_training_from_ckpt: True
+        resume_training_from_ckpt: False
         train_backbone: True
 
     predict: True
