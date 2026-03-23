@@ -9,5 +9,5 @@ git clone -b gcp-environment-setup https://github.com/RasaraThathsarana/LPR_FLAI
 cd LPR_FLAIR
 bash setup.sh
 tmux new -s flair
-conda activate flairhub
+conda activate FLAIRHUB
 bash run.sh
