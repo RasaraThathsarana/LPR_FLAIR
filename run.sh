@@ -6,13 +6,12 @@ if ! command -v tmux &> /dev/null; then
 fi
 
 if [ -z "$TMUX" ]; then
-    tmux new-session -d -s flair_training "bash $0"
+    tmux new-session -d -s flair_training "bash $0; exec bash"
     exit 0
 fi
 
 source ~/.bashrc
 
-# Unzip your specific file
 unzip -o FLAIR-HUB_FULL.zip -d csv/
 
 sed -i 's/;/,/g' csv/FLAIR-HUB_TRAIN.csv csv/FLAIR-HUB_VALID.csv csv/FLAIR-HUB_TEST.csv
