@@ -23,7 +23,7 @@ tasks:
 
 hyperparams:
     num_epochs: 1 #15
-    batch_size: 12
+    batch_size: 14
     seed: 2025
     learning_rate: 0.0001
 
