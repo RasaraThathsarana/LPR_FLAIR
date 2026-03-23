@@ -12,6 +12,9 @@ fi
 
 source ~/.bashrc
 
+conda activate FLAIRHUB
+cd LPR_FLAIR
+
 unzip -o FLAIR-HUB_FULL.zip -d csv/
 
 sed -i 's/;/,/g' csv/FLAIR-HUB_TRAIN.csv csv/FLAIR-HUB_VALID.csv csv/FLAIR-HUB_TEST.csv
