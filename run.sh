@@ -6,7 +6,8 @@ if ! command -v tmux &> /dev/null; then
 fi
 
 if [ -z "$TMUX" ]; then
-    tmux new -s flair
+    SCRIPT_PATH="$(realpath "$0")"
+    tmux new -s flair "bash '$SCRIPT_PATH'; exec bash"
 fi
 
 source ~/.bashrc
