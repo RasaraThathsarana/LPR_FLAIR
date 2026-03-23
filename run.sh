@@ -3,10 +3,6 @@ set -e
 
 echo "===== RUN START ====="
 
-# Activate conda properly
-eval "$(conda shell.bash hook)"
-conda activate flairhub
-
 # Install project (safe repeat)
 echo "Installing project..."
 pip install -e .
