@@ -144,6 +144,10 @@ class FLAIRLosses:
                 if aux_active and self.config['modalities']['inputs'].get(modality, False):
                     aux_loss_name = f"aux_{modality}_{task}"
                     losses[aux_loss_name] = self._create_aux_loss(task, modality, task_config)
+                    
+            use_lpr_aux = self.config.get('models', {}).get('monotemp_model', {}).get('use_lpr_aux_decoder', False)
+            if use_lpr_aux:
+                losses[f"lpr_aux_{task}"] = nn.BCEWithLogitsLoss()
 
         return losses
 
@@ -216,8 +220,3 @@ class FLAIRLosses:
             torch.FloatTensor or dict: The weight tensor for a specific task or all stored weights.
         """
         return self.default_weights if task_name is None else self.default_weights.get(task_name, None)
-
-
-
-
-

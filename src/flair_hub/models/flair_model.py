@@ -186,11 +186,29 @@ class FLAIR_HUB_Model(nn.Module):
                 nn.ReLU(),
                 nn.Conv2d(32, self.task_nclasses, 1)
             )
+            
+            # LPR Auxiliary Decoder for Patch-wise Multi-Class Classification
+            self.use_lpr_aux_decoder = config.get('models', {}).get('monotemp_model', {}).get('use_lpr_aux_decoder', False)
+            if self.use_lpr_aux_decoder:
+                self.lpr_aux_decoders = nn.ModuleDict()
+                for task in config['labels']:
+                    task_nclasses = len(config['labels_configs'][task]['value_name'])
+                    self.lpr_aux_decoders[task] = nn.Sequential(
+                        nn.Linear(512, 128),
+                        nn.BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
+                        nn.ReLU(),
+                        nn.Linear(128, task_nclasses)
+                    )
+                print("Local Patch Refiner Auxiliary Decoder added for patch-wise classification.")
+            else:
+                self.lpr_aux_decoders = None
             print("Local Patch Refiner Architecture added to the model.")
         else:
             self.lpr_adapter = None
             self.refiner = None
             self.refiner_head = None
+            self.use_lpr_aux_decoder = False
+            self.lpr_aux_decoders = None
 
         self.print_model_parameters(
             self.encoders, self.main_decoders, self.aux_decoders,
@@ -269,6 +287,10 @@ class FLAIR_HUB_Model(nn.Module):
                          sum(p.numel() for p in self.refiner_head.parameters())
             total_params += lpr_params
             table += "| {:<37} | {:<35} | {:<17} | {:>13,} |\n".format("LPR Decoder", "LocalPatchRefiner", "refiner_head", lpr_params)
+            if getattr(self, 'use_lpr_aux_decoder', False) and self.lpr_aux_decoders is not None:
+                lpr_aux_params = sum(p.numel() for p in self.lpr_aux_decoders.parameters())
+                total_params += lpr_aux_params
+                table += "| {:<37} | {:<35} | {:<17} | {:>13,} |\n".format("LPR Aux Decoder", "Sequential", "lpr_aux_decoders", lpr_aux_params)
         else:
             for key, model in decoders_main.items():
                 if model is not None:
@@ -383,6 +405,15 @@ class FLAIR_HUB_Model(nn.Module):
                 n_classes = len(self.config['labels_configs'][task]['value_name'])
                 logits_tasks[task] = self.interpolate_map(lpr_out[:, start_idx:start_idx+n_classes, ...], img_size)
                 start_idx += n_classes
+                
+            if getattr(self, 'use_lpr_aux_decoder', False) and self.lpr_aux_decoders is not None:
+                for task in self.config['labels']:
+                    gt = global_tokens
+                    if gt.ndim == 4:
+                        gt = gt.flatten(2).transpose(1, 2) # (B, N, C)
+                        
+                    aux_out = self.lpr_aux_decoders[task](gt)
+                    logits_aux[f'lpr_aux_{task}'] = aux_out.transpose(1, 2) # (B, task_nclasses, N)
         else:   
             for task in self.config['labels']:
                 if active_mono_keys:

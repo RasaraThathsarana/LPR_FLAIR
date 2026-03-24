@@ -6,6 +6,8 @@ models:
         arch: 'swin_tiny_patch4_window7_224-upernet' #'swin_base_patch4_window12_384-upernet' 
         new_channels_init_mode: 'random' # [copy_first / copy_second / copy_third / random]
         use_LPR_decoder: True
+        use_lpr_aux_decoder: True
+        lpr_aux_weight: 1
 
     multitemp_model: 
     

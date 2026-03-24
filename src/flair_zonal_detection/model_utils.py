@@ -47,7 +47,9 @@ def prepare_model_config(config: Dict[str, Any]) -> Dict[str, Any]:
     if 'monotemp_arch' in config:
         cfg['models']['monotemp_model'] = {
             'arch': config['monotemp_arch'],
-            'new_channels_init_mode': 'random'
+            'new_channels_init_mode': 'random',
+            'use_lpr_aux_decoder': config.get('use_lpr_aux_decoder', False),
+            'lpr_aux_weight': config.get('lpr_aux_weight', 0.5)
         }
 
     if 'multitemp_model_ref_date' in config:

@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
@@ -165,8 +166,32 @@ class SegmentationTask(pl.LightningModule):
             main_preds = torch.argmax(torch.softmax(logits, dim=1), dim=1)
             aux_loss = self._compute_aux_loss(dict_logits_aux, task, targets)
 
+            # Compute LPR Aux Loss if present
+            lpr_aux_loss = torch.tensor(0.0, device=self.device)
+            lpr_aux_key = f"lpr_aux_{task}"
+            if lpr_aux_key in dict_logits_aux:
+                lpr_aux_logits = dict_logits_aux[lpr_aux_key]
+                targets_raw = batch[task].to(self.device)
+                if targets_raw.ndim == 4:
+                    targets_ohe = targets_raw
+                else:
+                    num_classes = len(self.config['labels_configs'][task]['value_name'])
+                    targets_ohe = torch.nn.functional.one_hot(targets_raw.long(), num_classes=num_classes).permute(0, 3, 1, 2).float()
+                
+                # Compute 2D grid dimension from N patches
+                N = lpr_aux_logits.shape[-1]
+                H_p = int(math.sqrt(N))
+
+                # Pool 2D targets to (H_p, H_p) grid to find presence (max=1), then flatten to match (B, num_classes, N)
+                patch_targets = torch.nn.functional.adaptive_max_pool2d(targets_ohe, output_size=(H_p, H_p)).flatten(2)
+                if lpr_aux_key in self.criterion:
+                    _lpr_loss = self.criterion[lpr_aux_key](lpr_aux_logits, patch_targets)
+                    lpr_weight = self.config.get('models', {}).get('monotemp_model', {}).get('lpr_aux_weight', 0.5)
+                    lpr_aux_loss = lpr_weight * _lpr_loss
+                    self._check_for_invalid_loss(lpr_aux_loss, task, is_aux=True)
+
             task_weight = self.config['labels_configs'][task].get('task_weight', 1.0)
-            loss_sum += task_weight * (main_loss + aux_loss)
+            loss_sum += task_weight * (main_loss + aux_loss + lpr_aux_loss)
 
             all_preds[task] = main_preds
             all_targets[task] = targets.to(torch.int32)
