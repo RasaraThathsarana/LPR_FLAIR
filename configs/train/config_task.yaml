@@ -22,10 +22,10 @@ tasks:
     metrics_only: False
 
 hyperparams:
-    num_epochs: 1 #15
-    batch_size: 14
+    num_epochs: 15
+    batch_size: 32
     seed: 2025
-    learning_rate: 0.0001
+    learning_rate: 0.0002
 
     optimizer: adamw  # [sgd / adam / adamw]
     optim_weight_decay: 0.01
