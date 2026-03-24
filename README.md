@@ -13,10 +13,10 @@ conda activate FLAIRHUB
 bash run.sh
 ```
 
-##Hardware Requirements & Training Details
-GPU Requirement: Assumes training on an NVIDIA A100 80GB GPU.
+##H ardware Requirements & Training Details
+* GPU Requirement: Assumes training on an NVIDIA A100 80GB GPU.
 
-Storage Requirement: Minimum 350GB storage required.
+* Storage Requirement: Minimum 350GB storage required.
 
 Training Configuration: Batch size is set to 32, and gradient checkpointing is disabled.
 
