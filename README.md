@@ -22,6 +22,6 @@ bash run.sh
 
 * Execution Behavior:
 
-** This will run 5 training processes consecutively if not terminated.
+  * This will run 5 training processes consecutively if not terminated.
 
-** Each training process is initialized with a random seed value.
+  * Each training process is initialized with a random seed value.
