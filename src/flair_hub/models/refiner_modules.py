@@ -121,7 +121,7 @@ class UNet_FullRes(nn.Module):
         return out
 
 class LocalPatchRefiner(nn.Module):
-    def __init__(self, global_dim, in_channels=3, patch_size=16, hidden_dim=256, cnn_dim=32, num_heads=8, use_checkpoint=True, warmup_iters=15000, ramp_iters=5000, local_backbone='unet'):
+    def __init__(self, global_dim, in_channels=3, patch_size=16, hidden_dim=256, cnn_dim=32, num_heads=8, use_checkpoint=True, warmup_iters=15000, ramp_iters=5000, local_backbone='unet', dropout=0.1):
         super().__init__()
         self.use_checkpoint = use_checkpoint
         self.patch_size = patch_size
@@ -149,6 +149,9 @@ class LocalPatchRefiner(nn.Module):
         self.k_proj = nn.Linear(hidden_dim, hidden_dim)
         self.v_proj = nn.Linear(global_dim, hidden_dim)
         self.out_proj = nn.Linear(hidden_dim, hidden_dim)
+        
+        self.attn_drop = nn.Dropout(dropout)
+        self.proj_drop = nn.Dropout(dropout)
 
         # 2D Sine-Cosine Positional Encoding for spatial awareness within the patch
         pos_embed = self._get_2d_sincos_pos_embed(hidden_dim, patch_size)
@@ -157,7 +160,8 @@ class LocalPatchRefiner(nn.Module):
         self.fusion_conv = nn.Sequential(
             nn.Conv2d(hidden_dim, hidden_dim, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(hidden_dim),
-            nn.ReLU(inplace=True)
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(p=dropout)
         )
 
     def _get_2d_sincos_pos_embed(self, embed_dim, grid_size):
@@ -201,10 +205,12 @@ class LocalPatchRefiner(nn.Module):
 
             attn_logits = (Q @ K.t()) * (self.hidden_dim ** -0.5)
             attn_weights = torch.tanh(attn_logits)
+            attn_weights = self.attn_drop(attn_weights)
 
             x_attn = attn_weights * V
 
             out = self.out_proj(x_attn)
+            out = self.proj_drop(out)
 
         return out
 

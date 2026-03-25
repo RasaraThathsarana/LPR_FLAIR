@@ -175,15 +175,16 @@ class FLAIR_HUB_Model(nn.Module):
 
         # LPR Adapter & Refiner Setup
         if self.use_LPR_decoder:
-            self.lpr_adapter = LPRAdapter(use_checkpoint=use_checkpoint)
+            self.lpr_adapter = LPRAdapter(use_checkpoint=use_checkpoint, dropout=0.1)
             self.refiner = LocalPatchRefiner(
                 global_dim=512, in_channels=3, patch_size=16, hidden_dim=64, cnn_dim=32,
-                use_checkpoint=use_checkpoint
+                use_checkpoint=use_checkpoint, dropout=0.1
             )
             self.refiner_head = nn.Sequential(
                 nn.Conv2d(64, 32, 3, padding=1),
                 nn.BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
                 nn.ReLU(),
+                nn.Dropout2d(p=0.2),
                 nn.Conv2d(32, self.task_nclasses, 1)
             )
             print("Local Patch Refiner Architecture added to the model.")

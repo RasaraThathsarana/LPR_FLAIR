@@ -4,10 +4,13 @@ import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 
 class LPRAdapter(nn.Module):
-    def __init__(self, in_channels=1440, out_channels=512, use_checkpoint=True):
+    def __init__(self, in_channels=1440, out_channels=512, use_checkpoint=True, dropout=0.1):
         super().__init__()
         self.use_checkpoint = use_checkpoint
-        self.channel_reducer = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=1)
+        self.channel_reducer = nn.Sequential(
+            nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=1),
+            nn.Dropout2d(p=dropout)
+        )
 
     def _forward_impl(self, f1, f2, f3, f4):
         # Dynamically map to the f3 resolution, preventing cat mismatches for non-512 sizes
