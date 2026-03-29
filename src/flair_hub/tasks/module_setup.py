@@ -146,6 +146,13 @@ class FLAIRLosses:
                     losses[aux_loss_name] = self._create_aux_loss(task, modality, task_config)
                     
             use_lpr_aux = self.config.get('models', {}).get('monotemp_model', {}).get('use_lpr_aux_decoder', False)
+            models_cfg = self.config.get('models', {})
+            use_lpr_aux = models_cfg.get('monotemp_model', {}).get('use_lpr_aux_decoder')
+            if use_lpr_aux is None:
+                use_lpr_aux = models_cfg.get('multitemp_model', {}).get('use_lpr_aux_decoder')
+            if use_lpr_aux is None:
+                use_lpr_aux = models_cfg.get('use_lpr_aux_decoder', False)
+                
             if use_lpr_aux:
                 losses[f"lpr_aux_{task}"] = nn.BCEWithLogitsLoss()
 

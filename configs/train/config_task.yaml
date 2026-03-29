@@ -2,18 +2,18 @@
 
 paths :   
     out_folder: ../results/
-    out_model_name: Tiny_lpr_exp1
+    out_model_name: AuX_exp_2
 
     train_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_TRAIN.csv
     val_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_VALID.csv
     test_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_TEST.csv
     global_mtd_folder: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/FLAIR-HUB_download/data/GLOBAL_ALL_MTD/
-    ckpt_model_path: /home/cse/Documents/Rasara/FLAIR/FLAIR-ORG/results/Tiny_lpr_exp1/checkpoints/last.ckpt
+    ckpt_model_path: 
 tasks: 
     train: True
     train_tasks: 
         init_weights_only_from_ckpt: False
-        resume_training_from_ckpt: True
+        resume_training_from_ckpt: False
         train_backbone: True
 
     predict: True

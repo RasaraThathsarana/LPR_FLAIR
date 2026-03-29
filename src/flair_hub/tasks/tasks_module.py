@@ -163,7 +163,7 @@ class SegmentationTask(pl.LightningModule):
             main_loss = self.criterion[task](logits, targets)
             self._check_for_invalid_loss(main_loss, task)
 
-            main_preds = torch.argmax(torch.softmax(logits, dim=1), dim=1)
+            main_preds = torch.argmax(logits, dim=1)
             aux_loss = self._compute_aux_loss(dict_logits_aux, task, targets)
 
             # Compute LPR Aux Loss if present
@@ -384,7 +384,7 @@ class SegmentationTask(pl.LightningModule):
         dict_logits_task, _ = self.forward(batch, apply_mod_dropout=False)
         dict_logits_task = self._ensure_task_dict(dict_logits_task)
         return {
-            f"preds_{task}": torch.argmax(torch.softmax(logits, dim=1), dim=1)
+            f"preds_{task}": torch.argmax(logits, dim=1)
             for task, logits in dict_logits_task.items()
         }
 

@@ -195,7 +195,7 @@ class FLAIR_HUB_Model(nn.Module):
                     task_nclasses = len(config['labels_configs'][task]['value_name'])
                     self.lpr_aux_decoders[task] = nn.Sequential(
                         nn.Linear(512, 128),
-                        nn.BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
+                        nn.LayerNorm(128),
                         nn.ReLU(),
                         nn.Linear(128, task_nclasses)
                     )
@@ -397,7 +397,12 @@ class FLAIR_HUB_Model(nn.Module):
         if self.use_LPR_decoder:
             img, global_tokens = self.lpr_adapter(fused_features)
             lpr_refined_features = self.refiner(img, global_tokens)
-            lpr_out = self.refiner_head(lpr_refined_features)
+            
+            use_checkpoint = self.config.get('models', {}).get('use_gradient_checkpointing', False)
+            if use_checkpoint and lpr_refined_features.requires_grad:
+                lpr_out = checkpoint(self.refiner_head, lpr_refined_features, use_reentrant=False)
+            else:
+                lpr_out = self.refiner_head(lpr_refined_features)
 
             # Properly map refiner output across multiple tasks
             start_idx = 0
@@ -412,7 +417,11 @@ class FLAIR_HUB_Model(nn.Module):
                     if gt.ndim == 4:
                         gt = gt.flatten(2).transpose(1, 2) # (B, N, C)
                         
-                    aux_out = self.lpr_aux_decoders[task](gt)
+                    if use_checkpoint and gt.requires_grad:
+                        aux_out = checkpoint(self.lpr_aux_decoders[task], gt, use_reentrant=False)
+                    else:
+                        aux_out = self.lpr_aux_decoders[task](gt)
+                        
                     logits_aux[f'lpr_aux_{task}'] = aux_out.transpose(1, 2) # (B, task_nclasses, N)
         else:   
             for task in self.config['labels']:
