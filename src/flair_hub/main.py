@@ -9,6 +9,8 @@ from flair_hub.data.utils_data.paths import get_datasets
 from flair_hub.utils.messaging import start_msg, end_msg, Logger
 from flair_hub.utils.config_io import setup_environment, copy_csv_and_config
 from flair_hub.utils.config_display import print_recap
+import torch
+torch.set_float32_matmul_precision('medium')  # or 'medium'
 
 
 argParser = argparse.ArgumentParser()
