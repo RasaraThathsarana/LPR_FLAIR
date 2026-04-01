@@ -8,30 +8,31 @@ paths :
     val_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_VALID.csv
     test_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_TEST.csv
     global_mtd_folder: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/FLAIR-HUB_download/data/GLOBAL_ALL_MTD/
-    ckpt_model_path: /home/cse/Documents/Rasara/FLAIR/FLAIR-ORG/results/Tiny_lpr_exp1/checkpoints/last.ckpt
+    ckpt_model_path: /home/cse/Documents/Rasara/Analysis/LPR_FLAIR/weights/ckpt-epoch=12-val_loss=0.56_Regex1.ckpt
 tasks: 
-    train: True
+    train: False
     train_tasks: 
         init_weights_only_from_ckpt: False
         resume_training_from_ckpt: True
-        train_backbone: True
+        train_backbone: False
 
     predict: True
     write_files: True
     georeferencing_output: False
-    metrics_only: False
+    metrics_only: True
 
 hyperparams:
-    num_epochs: 15
-    batch_size: 14
+    num_epochs: 5
+    batch_size: 32
     seed: 2025
-    learning_rate: 0.0001
+    learning_rate: 0.001
 
     optimizer: adamw  # [sgd / adam / adamw]
     optim_weight_decay: 0.01
     optim_betas: [0.9, 0.999]
 
-    scheduler: one_cycle_lr #  [one_cycle_lr / reduce_on_plateau / cycle_then_plateau]
+    scheduler: cosine_annealing_lr #  [one_cycle_lr / reduce_on_plateau / cycle_then_plateau]
+    eta_min: 0.00001
     warmup_fraction: 0.2 # if using one_cycle_lr. [0-1]
     plateau_patience: 5 # if using cycle_then_plateau
 
@@ -40,7 +41,7 @@ hardware:
     num_nodes: 1
     gpus_per_node: 1
     strategy: 'auto' # ddp_find_unused_parameters_true if num_nodes > 1
-    num_workers: 4
+    num_workers: 2
     precision: '16-mixed'  # Enable mixed precision training
 
 saving:   
