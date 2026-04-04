@@ -5,6 +5,25 @@ from torch.utils.checkpoint import checkpoint
 
 from typing import Dict, Any
 
+class EncoderWrapper(nn.Module):
+    """Handles execution of the encoder with gradient checkpointing."""
+    
+    def __init__(self, encoder: nn.Module, use_checkpoint: bool = False) -> None:
+        super().__init__()
+        self.encoder = encoder
+        self.use_checkpoint = use_checkpoint
+
+    @property
+    def out_channels(self):
+        return self.encoder.out_channels
+
+    def forward(self, x: torch.Tensor) -> Any:
+        if self.use_checkpoint and any(p.requires_grad for p in self.encoder.parameters()):
+            if not x.requires_grad:
+                x.requires_grad_(True)
+            return checkpoint(self.encoder, x, use_reentrant=False)
+        return self.encoder(x)
+
 class DecoderWrapper(nn.Module):
     """Handles sequential execution of the decoder and segmentation head."""
     
@@ -75,6 +94,6 @@ class FLAIR_Monotemp(nn.Module):
         use_checkpoint = config.get('models', {}).get('use_gradient_checkpointing', False)
         
         if self.return_type == 'encoder':
-            self.seg_model = self.seg_model.encoder
+            self.seg_model = EncoderWrapper(self.seg_model.encoder, use_checkpoint=use_checkpoint)
         elif self.return_type == 'decoder':
             self.seg_model = DecoderWrapper(self.seg_model.decoder, self.seg_model.segmentation_head, use_checkpoint=use_checkpoint)

@@ -59,11 +59,6 @@ class BasicBlock(nn.Module):
             return checkpoint(self._forward_impl, x, use_reentrant=False)
         return self._forward_impl(x)
 
-    def forward(self, x):
-        if self.use_checkpoint and x.requires_grad:
-            return checkpoint(self._forward_impl, x, use_reentrant=False)
-        return self._forward_impl(x)
-
 class UNet_FullRes(nn.Module):
     def __init__(self, in_channels=3, base_channels=32, use_checkpoint=False):
         super().__init__()
@@ -104,6 +99,9 @@ class UNet_FullRes(nn.Module):
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
+                
+    def _forward_final(self, x):
+        return self.final_refine(x)
 
     def forward(self, x):
         s1 = self.enc1(x)
@@ -116,12 +114,16 @@ class UNet_FullRes(nn.Module):
         d3 = self.dec3(torch.cat([self.up3(d4), s3], dim=1))
         d2 = self.dec2(torch.cat([self.up2(d3), s2], dim=1))
         
-        out = self.final_refine(torch.cat([self.final_up(d2), s1], dim=1))
+        concat = torch.cat([self.final_up(d2), s1], dim=1)
+        if self.use_checkpoint and concat.requires_grad:
+            out = checkpoint(self._forward_final, concat, use_reentrant=False)
+        else:
+            out = self.final_refine(concat)
         
         return out
 
 class LocalPatchRefiner(nn.Module):
-    def __init__(self, global_dim, in_channels=3, patch_size=16, hidden_dim=256, cnn_dim=32, num_heads=8, use_checkpoint=True, warmup_iters=15000, ramp_iters=5000, local_backbone='unet'):
+    def __init__(self, global_dim, in_channels=3, patch_size=16, hidden_dim=256, cnn_dim=32, use_checkpoint=True):
         super().__init__()
         self.use_checkpoint = use_checkpoint
         self.patch_size = patch_size
@@ -140,13 +142,12 @@ class LocalPatchRefiner(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        self.channel_meanings = nn.Parameter(torch.randn(hidden_dim, hidden_dim) * 0.02)
         self.q_norm = nn.LayerNorm(hidden_dim)
-        self.k_norm = nn.LayerNorm(hidden_dim)
+        self.k_norm = nn.LayerNorm(global_dim)
         self.v_norm = nn.LayerNorm(global_dim)
 
         self.q_proj = nn.Linear(hidden_dim, hidden_dim)
-        self.k_proj = nn.Linear(hidden_dim, hidden_dim)
+        self.k_proj = nn.Linear(global_dim, hidden_dim)
         self.v_proj = nn.Linear(global_dim, hidden_dim)
         self.out_proj = nn.Linear(hidden_dim, hidden_dim)
 
@@ -159,6 +160,19 @@ class LocalPatchRefiner(nn.Module):
             nn.BatchNorm2d(hidden_dim),
             nn.ReLU(inplace=True)
         )
+
+        # 1x1 Convolution to cleanly fuse concatenated features (hidden_dim + combined_dim + global_dim) back to combined_dim
+        self.concat_squeeze = nn.Sequential(
+            nn.Conv2d(hidden_dim + combined_dim + global_dim, hidden_dim, kernel_size=1, bias=False),
+            nn.BatchNorm2d(hidden_dim),
+            nn.ReLU(inplace=True)
+        )
+
+    def _forward_fusion(self, out, out_feat, global_tokens_permuted):
+        H, W = out_feat.shape[-2:]
+        global_upsampled = F.interpolate(global_tokens_permuted, size=(H, W), mode='bilinear', align_corners=False)
+        concat_features = torch.cat([out, out_feat, global_upsampled], dim=1)
+        return self.concat_squeeze(concat_features)
 
     def _get_2d_sincos_pos_embed(self, embed_dim, grid_size):
         grid_h = torch.arange(grid_size, dtype=torch.float32)
@@ -199,11 +213,15 @@ class LocalPatchRefiner(nn.Module):
             K = self.k_proj(k_normed)
             V = self.v_proj(v_normed)
 
-            attn_logits = (Q @ K.t()) * (self.hidden_dim ** -0.5)
-            attn_weights = torch.tanh(attn_logits)
+            # Cross attention between P*P pixel queries and 1 global patch key
+            attn_logits = (Q @ K.transpose(-2, -1)) * (self.hidden_dim ** -0.5)
+            
+            # Use Sigmoid for single-token spatial gating instead of Softmax/Tanh
+            attn_weights = torch.sigmoid(attn_logits)
 
             x_attn = attn_weights * V
 
+            # No residual here. Let q_normed specialize entirely as a query!
             out = self.out_proj(x_attn)
 
         return out
@@ -227,6 +245,7 @@ class LocalPatchRefiner(nn.Module):
         patches_q = all_feats.unfold(2, P, P).unfold(3, P, P)
         patches_q = patches_q.permute(0, 2, 3, 1, 4, 5).reshape(-1, all_feats.size(1), P, P)
 
+
         if self.use_checkpoint and patches_q.requires_grad:
             q_map = checkpoint(self.query_proj, patches_q, use_reentrant=False)
         else:
@@ -237,7 +256,7 @@ class LocalPatchRefiner(nn.Module):
         # Inject 2D Sine-Cosine Positional Encodings
         q_normed = q_normed + self.pos_embed
 
-        k_normed = self.k_norm(self.channel_meanings)
+        k_normed = self.k_norm(global_tokens).reshape(B * n_h * n_w, 1, self.global_dim)
         v_normed = self.v_norm(global_tokens).reshape(B * n_h * n_w, 1, self.global_dim)
 
         if self.use_checkpoint and q_normed.requires_grad:
@@ -256,4 +275,11 @@ class LocalPatchRefiner(nn.Module):
         out = fused.view(B, n_h, n_w, self.hidden_dim, P, P)
         out = out.permute(0, 3, 1, 4, 2, 5).reshape(B, self.hidden_dim, H, W)
         
-        return out
+        # Pass the un-interpolated tokens into the fusion wrapper
+        global_tokens_permuted = global_tokens.permute(0, 3, 1, 2)
+        
+        # All massive upsampling and concatenation now happens SAFELY inside the checkpoint, saving gigabytes of VRAM
+        if self.use_checkpoint and out_feat.requires_grad:
+            return checkpoint(self._forward_fusion, out, out_feat, global_tokens_permuted, use_reentrant=False)
+        else:
+            return self._forward_fusion(out, out_feat, global_tokens_permuted)

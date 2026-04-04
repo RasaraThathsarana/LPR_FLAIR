@@ -51,7 +51,7 @@ def setup_environment(args) -> tuple:
 
     num = random.randint(1, 1000)
     config['paths']['out_model_name'] = config['paths']['out_model_name'] + "_" + args.name
-    config['hyperparams']['seed'] = num
+    # config['hyperparams']['seed'] = num
     
     out_dir = Path(config['paths']["out_folder"], config['paths']["out_model_name"])
     out_dir.mkdir(parents=True, exist_ok=True)

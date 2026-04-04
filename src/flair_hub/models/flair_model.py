@@ -71,11 +71,6 @@ class FLAIR_HUB_Model(nn.Module):
                     img_size=img_input_sizes[mod],
                     return_type='encoder',
                 )
-                if config.get('models', {}).get('use_gradient_checkpointing', False):
-                    # ENABLE GRADIENT CHECKPOINTING HERE
-                    if hasattr(encoder.seg_model, "model"):
-                        encoder.seg_model.model.set_grad_checkpointing(True)
-
                 self.encoders[mod] = encoder
         
         # Adjust UTAE parameters for multi-modal fusion
@@ -177,7 +172,7 @@ class FLAIR_HUB_Model(nn.Module):
         if self.use_LPR_decoder:
             self.lpr_adapter = LPRAdapter(use_checkpoint=use_checkpoint)
             self.refiner = LocalPatchRefiner(
-                global_dim=512, in_channels=3, patch_size=16, hidden_dim=64, cnn_dim=32,
+                global_dim=128, in_channels=3, patch_size=16, hidden_dim=64, cnn_dim=32,
                 use_checkpoint=use_checkpoint
             )
             self.refiner_head = nn.Sequential(
@@ -328,6 +323,8 @@ class FLAIR_HUB_Model(nn.Module):
     
     def forward(self, batch: dict, apply_mod_dropout: bool = False) -> dict:
         fmaps, logits_tasks, logits_aux = {}, {}, {}
+        
+        use_checkpoint = self.config.get('models', {}).get('use_gradient_checkpointing', False)
 
         active_mono_keys = [key for key in self.mono_keys if key in self.encoders]
         active_multi_keys = [key for key in self.multi_keys if key in self.encoders]
@@ -375,7 +372,10 @@ class FLAIR_HUB_Model(nn.Module):
         if self.use_LPR_decoder:
             img, global_tokens = self.lpr_adapter(fused_features)
             lpr_refined_features = self.refiner(img, global_tokens)
-            lpr_out = self.refiner_head(lpr_refined_features)
+            if use_checkpoint and lpr_refined_features.requires_grad:
+                lpr_out = checkpoint(self.refiner_head, lpr_refined_features, use_reentrant=False)
+            else:
+                lpr_out = self.refiner_head(lpr_refined_features)
 
             # Properly map refiner output across multiple tasks
             start_idx = 0

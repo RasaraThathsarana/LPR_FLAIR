@@ -12,6 +12,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 from flair_hub.writer.prediction_writer import PredictionWriter
 
+# Enable Tensor Cores for float32 matrix multiplications
+torch.set_float32_matmul_precision('medium')
 
 def check_batchnorm_and_batch_size(config: Dict[str, Any], seg_module: nn.Module) -> None:
     """
@@ -88,6 +90,7 @@ def train(config: Dict[str, Any], data_module: Any, seg_module: nn.Module, out_d
         logger=loggers,
         enable_progress_bar=config['saving']["enable_progress_bar"],
         precision=config['hardware'].get("precision", "32-true"),
+        accumulate_grad_batches=config['hyperparams'].get("accumulate_grad_batches", 1),
     )
 
     if config['tasks']['train_tasks']['resume_training_from_ckpt']:

@@ -4,10 +4,10 @@ paths :
     out_folder: ../results/
     out_model_name: FLAIR
 
-    train_csv: csv/FLAIR-HUB_TRAIN.csv
-    val_csv: csv/FLAIR-HUB_VALID.csv
-    test_csv: csv/FLAIR-HUB_TEST.csv
-    global_mtd_folder: FLAIR-HUB_download/data/GLOBAL_ALL_MTD/
+    train_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_TRAIN_20k.csv
+    val_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_VALID.csv
+    test_csv: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/csv/FLAIR-HUB_TEST.csv
+    global_mtd_folder: /home/cse/Documents/Rasara/FLAIR/FLAIR-HUB/FLAIR-HUB_download/data/GLOBAL_ALL_MTD/
     ckpt_model_path: 
 tasks: 
     train: True
@@ -23,8 +23,9 @@ tasks:
 
 hyperparams:
     num_epochs: 15
-    batch_size: 32
-    seed: 2025
+    batch_size: 2
+    accumulate_grad_batches: 2
+    seed: 762
     learning_rate: 0.0002
 
     optimizer: adamw  # [sgd / adam / adamw]
