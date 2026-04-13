@@ -1,11 +1,18 @@
 models: 
-    use_gradient_checkpointing: False
+    use_gradient_checkpointing: True
 
     monotemp_model: 
 
-        arch: 'swin_tiny_patch4_window7_224-upernet' #'swin_base_patch4_window12_384-upernet' 
+        arch: 'swin_base_patch4_window12_384-unet'  
         new_channels_init_mode: 'random' # [copy_first / copy_second / copy_third / random]
         use_LPR_decoder: True
+
+    vit_model:
+        use_ViT: False
+        model_name: 'vit_base_patch16_224'
+        pretrained: True
+        fusion_channels: 256
+        stage_channels: [128, 256, 512, 1024]
 
     multitemp_model: 
     
