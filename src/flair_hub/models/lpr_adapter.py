@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 
 class LPRAdapter(nn.Module):
-    def __init__(self, in_channels=1440, out_channels=512, use_checkpoint=True):
+    def __init__(self, in_channels=1920, out_channels=512, use_checkpoint=True):
         super().__init__()
         self.use_checkpoint = use_checkpoint
         self.channel_reducer = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=1)

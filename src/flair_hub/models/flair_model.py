@@ -12,6 +12,7 @@ from flair_hub.models.monotemp_model import FLAIR_Monotemp
 from flair_hub.models.multitemp_model import UTAE
 from flair_hub.models.lpr_adapter import LPRAdapter
 from flair_hub.models.refiner_modules import LocalPatchRefiner
+from flair_hub.models.vit import FLAIR_ViT
 
 
 class FLAIR_HUB_Model(nn.Module):
@@ -58,19 +59,30 @@ class FLAIR_HUB_Model(nn.Module):
                 and not config['modalities']['pre_processings']['calc_elevation_stack_dsm']
                 else 2
             )
-        
+
+        vit_config = config.get('models', {}).get('vit_model', {})
+        use_vit = vit_config.get('use_ViT', vit_config.get('use_vit', False))
+
         # Encoders
         self.encoders = nn.ModuleDict()
         for mod in self.mono_keys:
             if config['modalities']['inputs'].get(mod, False):
-
-                encoder = FLAIR_Monotemp(
-                    config,
-                    channels=self.channels_dict[mod],
-                    classes=self.task_nclasses,
-                    img_size=img_input_sizes[mod],
-                    return_type='encoder',
-                )
+                if use_vit:
+                    encoder = FLAIR_ViT(
+                        config,
+                        channels=self.channels_dict[mod],
+                        classes=self.task_nclasses,
+                        img_size=img_input_sizes[mod],
+                        return_type='encoder',
+                    )
+                else:
+                    encoder = FLAIR_Monotemp(
+                        config,
+                        channels=self.channels_dict[mod],
+                        classes=self.task_nclasses,
+                        img_size=img_input_sizes[mod],
+                        return_type='encoder',
+                    )
                 if config.get('models', {}).get('use_gradient_checkpointing', False):
                     # ENABLE GRADIENT CHECKPOINTING HERE
                     if hasattr(encoder.seg_model, "model"):
@@ -177,7 +189,7 @@ class FLAIR_HUB_Model(nn.Module):
         if self.use_LPR_decoder:
             self.lpr_adapter = LPRAdapter(use_checkpoint=use_checkpoint)
             self.refiner = LocalPatchRefiner(
-                global_dim=512, in_channels=3, patch_size=16, hidden_dim=64, cnn_dim=32,
+                global_dim=512, in_channels=3, patch_size=16, hidden_dim=64, cnn_dim=64,
                 use_checkpoint=use_checkpoint
             )
             self.refiner_head = nn.Sequential(
@@ -242,7 +254,13 @@ class FLAIR_HUB_Model(nn.Module):
                 num_params = sum(p.numel() for p in model.parameters())
                 total_params += num_params
                 if key in mono_keys:
-                    encoder = config['models']['monotemp_model']['arch'].split('-')[0]
+                    vit_config = config.get('models', {}).get('vit_model', {})
+                    use_vit = vit_config.get('use_ViT', vit_config.get('use_vit', False))
+                    encoder = (
+                        vit_config.get('model_name', 'vit')
+                        if use_vit
+                        else config['models']['monotemp_model']['arch'].split('-')[0]
+                    )
                 elif key in multi_keys:
                     encoder = 'utae'
                 else:
@@ -338,6 +356,12 @@ class FLAIR_HUB_Model(nn.Module):
         for mod, encoder in self.encoders.items():
             if mod in self.mono_keys:
                 fmaps[mod] = encoder.seg_model(batch[mod])
+                print(fmaps[mod][0].shape)
+                print(fmaps[mod][1].shape)
+                print(fmaps[mod][2].shape)
+                print(fmaps[mod][3].shape)
+                print(fmaps[mod][4].shape)
+                print(fmaps[mod][5].shape)
 
                 if self.aux_losses.get(mod):
                     for task in self.config['labels']:

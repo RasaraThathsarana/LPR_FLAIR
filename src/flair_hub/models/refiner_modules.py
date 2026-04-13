@@ -55,13 +55,6 @@ class BasicBlock(nn.Module):
         return F.relu(out, inplace=True)
 
     def forward(self, x):
-        if self.use_checkpoint and x.requires_grad:
-            return checkpoint(self._forward_impl, x, use_reentrant=False)
-        return self._forward_impl(x)
-
-    def forward(self, x):
-        if self.use_checkpoint and x.requires_grad:
-            return checkpoint(self._forward_impl, x, use_reentrant=False)
         return self._forward_impl(x)
 
 class UNet_FullRes(nn.Module):
@@ -218,8 +211,8 @@ class LocalPatchRefiner(nn.Module):
         n_h, n_w = H // P, W // P
 
         # Robust check to ensure global_tokens match spatial dims of img//P
-        if global_tokens.shape[-2] != n_h or global_tokens.shape[-1] != n_w:
-            global_tokens = F.interpolate(global_tokens, size=(n_h, n_w), mode='bilinear', align_corners=False)
+        # if global_tokens.shape[-2] != n_h or global_tokens.shape[-1] != n_w:
+        #     global_tokens = F.interpolate(global_tokens, size=(n_h, n_w), mode='bilinear', align_corners=False)
 
         global_tokens = global_tokens.permute(0, 2, 3, 1) # [B, n_h, n_w, global_dim]
 
@@ -232,10 +225,10 @@ class LocalPatchRefiner(nn.Module):
         else:
             q_map = self.query_proj(patches_q)
             
-        q_normed = self.q_norm(q_map.flatten(2).transpose(1, 2))
-        
-        # Inject 2D Sine-Cosine Positional Encodings
-        q_normed = q_normed + self.pos_embed
+        q_tokens = q_map.flatten(2).transpose(1, 2)
+        # Normalize after adding position information so attention sees
+        # the intended zero-mean, unit-variance query distribution.
+        q_normed = self.q_norm(q_tokens + self.pos_embed)
 
         k_normed = self.k_norm(self.channel_meanings)
         v_normed = self.v_norm(global_tokens).reshape(B * n_h * n_w, 1, self.global_dim)
@@ -248,10 +241,7 @@ class LocalPatchRefiner(nn.Module):
         # Prepare components for Fusion (only attention features now)
         fusion_input = attn_features.transpose(1, 2).reshape(-1, self.hidden_dim, P, P)
 
-        if self.use_checkpoint and fusion_input.requires_grad:
-            fused = checkpoint(self.fusion_conv, fusion_input, use_reentrant=False)
-        else:
-            fused = self.fusion_conv(fusion_input)
+        fused = self.fusion_conv(fusion_input)
 
         out = fused.view(B, n_h, n_w, self.hidden_dim, P, P)
         out = out.permute(0, 3, 1, 4, 2, 5).reshape(B, self.hidden_dim, H, W)
