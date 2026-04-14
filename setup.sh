@@ -23,4 +23,4 @@ eval "$(conda shell.bash hook)"
 conda env create -f environment.yml || echo "Environment already exists"
 
 echo "===== SETUP DONE ====="
-echo "IMPORTANT: Run 'source ~/.bashrc' in your terminal to use conda."
+exec bash --init-file <(echo "source ~/.bashrc; conda activate FLAIRHUB")
