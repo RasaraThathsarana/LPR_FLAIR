@@ -26,14 +26,38 @@ if [ ! -f "csv/.processed" ]; then
 fi
 
 # Download HuggingFace data
-echo "Downloading HuggingFace data..."
-python flair-hub-HF-dl.py
+DOWNLOAD_FLAG="FLAIR-HUB_download/.downloaded"
+UNZIP_FLAG="FLAIR-HUB_download/.unzipped"
+DATA_DIR="FLAIR-HUB_download/data"
 
-# Unzip downloaded files
-echo "Unzipping downloaded files..."
-for f in FLAIR-HUB_download/data/*.zip; do
-    unzip -o "$f" -d FLAIR-HUB_download/data/ && rm "$f";
-done
+if [ -f "$DOWNLOAD_FLAG" ]; then
+    echo "Download already completed, skipping download."
+else
+    echo "Downloading HuggingFace data..."
+    python flair-hub-HF-dl.py
+    touch "$DOWNLOAD_FLAG"
+fi
+
+if [ -f "$UNZIP_FLAG" ]; then
+    echo "Unzip already completed, skipping unzip."
+else
+    echo "Unzipping downloaded files..."
+    mkdir -p "$DATA_DIR"
+    shopt -s nullglob
+    zip_files=("$DATA_DIR"/*.zip)
+    shopt -u nullglob
+
+    if [ ${#zip_files[@]} -eq 0 ]; then
+        echo "ERROR: No ZIP files found in $DATA_DIR"
+        exit 1
+    fi
+
+    for f in "${zip_files[@]}"; do
+        unzip -o "$f" -d "$DATA_DIR" && rm "$f"
+    done
+
+    touch "$UNZIP_FLAG"
+fi
 
 DATA_PATH=$(realpath --relative-to="$(pwd)" FLAIR-HUB_download/data)
 sed -i "s|\.\./|${DATA_PATH}/|g" csv/FLAIR-HUB_*.csv
