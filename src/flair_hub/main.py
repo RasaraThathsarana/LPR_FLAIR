@@ -14,6 +14,10 @@ from flair_hub.utils.config_display import print_recap
 argParser = argparse.ArgumentParser()
 argParser.add_argument("--config", help="Path to the .yaml config file", required=True)
 argParser.add_argument("--name", help="Name of the experiment", required=True)
+argParser.add_argument("--use_LPR_decoder", action="store_true", help="Enable Local Patch Refiner decoder (instead of UNet)")
+argParser.add_argument("--no_LPR_decoder", action="store_true", help="Disable Local Patch Refiner decoder (use UNet)")
+argParser.add_argument("--use_ViT", action="store_true", help="Enable Vision Transformer encoder (instead of Swin)")
+argParser.add_argument("--no_ViT", action="store_true", help="Disable Vision Transformer encoder (use Swin)")
 
 
 def main():

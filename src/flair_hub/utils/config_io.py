@@ -47,6 +47,16 @@ def setup_environment(args) -> tuple:
     """
     config = read_config(args.config)
 
+    # Apply CLI overrides for model architecture
+    if hasattr(args, 'use_LPR_decoder') and args.use_LPR_decoder:
+        config['models']['monotemp_model']['use_LPR_decoder'] = True
+    if hasattr(args, 'no_LPR_decoder') and args.no_LPR_decoder:
+        config['models']['monotemp_model']['use_LPR_decoder'] = False
+    if hasattr(args, 'use_ViT') and args.use_ViT:
+        config['models']['vit_model']['use_ViT'] = True
+    if hasattr(args, 'no_ViT') and args.no_ViT:
+        config['models']['vit_model']['use_ViT'] = False
+
     # num = random.randint(1, 1000)
     config['paths']['out_model_name'] = config['paths']['out_model_name'] + "_" + args.name
     # config['hyperparams']['seed'] = num
