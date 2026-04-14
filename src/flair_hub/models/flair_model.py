@@ -11,6 +11,7 @@ from pytorch_lightning.utilities.rank_zero import rank_zero_only
 from flair_hub.models.monotemp_model import FLAIR_Monotemp
 from flair_hub.models.multitemp_model import UTAE
 from flair_hub.models.lpr_adapter import LPRAdapter
+from flair_hub.models.vit_adapter import ViTAdapter
 from flair_hub.models.refiner_modules import LocalPatchRefiner
 from flair_hub.models.vit import FLAIR_ViT
 
@@ -62,6 +63,9 @@ class FLAIR_HUB_Model(nn.Module):
 
         vit_config = config.get('models', {}).get('vit_model', {})
         use_vit = vit_config.get('use_ViT', vit_config.get('use_vit', False))
+        self.use_vit = use_vit
+
+        self.use_LPR_decoder = config['models']['monotemp_model'].get('use_LPR_decoder', False)
 
         # Encoders
         self.encoders = nn.ModuleDict()
@@ -96,7 +100,11 @@ class FLAIR_HUB_Model(nn.Module):
                 config['models']['multitemp_model']['out_conv'].append(self.task_nclasses)
 
         if self.encoders:
-            mono_encoder_out_channels = next(iter(self.encoders.values())).seg_model.out_channels
+            if self.use_vit and self.use_LPR_decoder:
+                mono_encoder_out_channels = [0, 0, 256, 512]
+            else:
+                mono_encoder_out_channels = next(iter(self.encoders.values())).seg_model.out_channels
+            
             config['models']['multitemp_model']['encoder_widths'] = self.adjust_fm_length(
                 config, mono_encoder_out_channels
             )
@@ -126,9 +134,13 @@ class FLAIR_HUB_Model(nn.Module):
                 )
         
         if any(mod in self.encoders for mod in self.mono_keys):
-            encoders_out_channels = self.calc_backbones_channels()
-            print(f"Calculated backbone output channels for fusion: {encoders_out_channels}")
-            target_fused_channels = next(iter(self.encoders.values())).seg_model.out_channels
+            if self.use_vit and self.use_LPR_decoder:
+                encoders_out_channels = [1]
+                target_fused_channels = [1]
+            else:
+                encoders_out_channels = self.calc_backbones_channels()
+                print(f"Calculated backbone output channels for fusion: {encoders_out_channels}")
+                target_fused_channels = next(iter(self.encoders.values())).seg_model.out_channels
         else:
             encoders_out_channels = [1]  # Dummy value
             target_fused_channels = [1]  # Dummy value
@@ -143,8 +155,6 @@ class FLAIR_HUB_Model(nn.Module):
             use_checkpoint=use_checkpoint
         )                  
         
-        self.use_LPR_decoder = config['models']['monotemp_model'].get('use_LPR_decoder', False)
-
         # Main Decoders
         self.main_decoders = nn.ModuleDict()
         
@@ -187,7 +197,11 @@ class FLAIR_HUB_Model(nn.Module):
 
         # LPR Adapter & Refiner Setup
         if self.use_LPR_decoder:
-            self.lpr_adapter = LPRAdapter(use_checkpoint=use_checkpoint)
+            if self.use_vit:
+                self.lpr_adapter = ViTAdapter(use_checkpoint=use_checkpoint)
+            else:
+                self.lpr_adapter = LPRAdapter(use_checkpoint=use_checkpoint)
+                
             self.refiner = LocalPatchRefiner(
                 global_dim=512, in_channels=3, patch_size=16, hidden_dim=64, cnn_dim=64,
                 use_checkpoint=use_checkpoint
@@ -244,7 +258,7 @@ class FLAIR_HUB_Model(nn.Module):
         table = " " + "-"*113 + "\n"
         table += ("| {:<37} | {:<35} | {:<17} | {:<13} |\n"
                 "| {} | {} | {} | {} |\n").format("Model modality", "Architecture", "Type", "Parameters",
-                                                    "-"*37, "-"*35, "-"*17, "-"*13)
+                                                  "-"*37, "-"*35, "-"*17, "-"*13)
 
         has_mono_key = any(key in mono_keys for key in encoders)
         default_decoder_arch = 'utae'
@@ -337,7 +351,7 @@ class FLAIR_HUB_Model(nn.Module):
             dropout_prob = modalities_dropout_dict[key]
             if torch.rand(1).item() < dropout_prob:
                 param_features = []
-                for tensor in feature_maps[key]:     
+                for tensor in feature_maps[key]:    
                     param_tensor = nn.Parameter(torch.empty_like(tensor))
                     nn.init.xavier_uniform_(param_tensor)
                     param_features.append(param_tensor)
@@ -356,12 +370,6 @@ class FLAIR_HUB_Model(nn.Module):
         for mod, encoder in self.encoders.items():
             if mod in self.mono_keys:
                 fmaps[mod] = encoder.seg_model(batch[mod])
-                print(fmaps[mod][0].shape)
-                print(fmaps[mod][1].shape)
-                print(fmaps[mod][2].shape)
-                print(fmaps[mod][3].shape)
-                print(fmaps[mod][4].shape)
-                print(fmaps[mod][5].shape)
 
                 if self.aux_losses.get(mod):
                     for task in self.config['labels']:
@@ -392,7 +400,10 @@ class FLAIR_HUB_Model(nn.Module):
             fmaps = self.modality_dropout(fmaps, modalities_dropout_dict)
 
         if active_mono_keys:
-            fused_features = self.fusion_handler(fmaps, fmaps[active_mono_keys[0]])
+            if self.use_LPR_decoder and self.use_vit:
+                fused_features = fmaps[active_mono_keys[0]]
+            else:
+                fused_features = self.fusion_handler(fmaps, fmaps[active_mono_keys[0]])
         else:
             fused_features = self.fusion_handler(logits_tasks, logits_tasks[active_multi_keys[0]])
 

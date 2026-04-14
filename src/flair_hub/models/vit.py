@@ -130,9 +130,37 @@ class ViTEncoder(nn.Module):
         return self._forward_impl(x)
 
 
+class RawViTWithImage(nn.Module):
+    """
+    Wrapper that forwards the original image together with raw ViT features.
+
+    This is useful for paths such as the Local Patch Refiner, where downstream
+    code needs both the untouched input image and the ViT token outputs.
+    """
+
+    def __init__(self, vit_encoder: ViTEncoder):
+        super().__init__()
+        self.vit_encoder = vit_encoder
+        self.out_channels = vit_encoder.out_channels
+        self.embed_dim = vit_encoder.embed_dim
+        self.patch_size = vit_encoder.patch_size
+        self.in_channels = vit_encoder.in_channels
+
+    def forward(self, x: torch.Tensor):
+        return x, self.vit_encoder(x)
+
+
 class FLAIR_ViT(nn.Module):
     """
     FLAIR ViT model wrapper that matches the interface of FLAIR_Monotemp.
+
+    When the repo uses the standard decoder path, this wrapper exposes a
+    ViT+FPN encoder so the downstream decoder receives CNN-like multi-scale
+    feature maps.
+
+    When the Local Patch Refiner path is enabled, this wrapper exposes the raw
+    ViT encoder outputs directly so a dedicated ViT adapter can consume the
+    token features without the FPN conversion.
     """
 
     def __init__(
@@ -155,6 +183,7 @@ class FLAIR_ViT(nn.Module):
         pretrained = vit_config.get('pretrained', True)
         fusion_channels = vit_config.get('fusion_channels', 256)
         stage_channels = vit_config.get('stage_channels', [128, 256, 512, 1024])
+        use_lpr_decoder = config.get('models', {}).get('monotemp_model', {}).get('use_LPR_decoder', False)
 
         # Read the gradient checkpointing config flag
         use_checkpoint = config.get('models', {}).get('use_gradient_checkpointing', False)
@@ -168,11 +197,14 @@ class FLAIR_ViT(nn.Module):
         )
 
         if self.return_type == 'encoder':
-            self.seg_model = ViT_FPN(
-                vit_encoder=vit_encoder,
-                fusion_channels=fusion_channels,
-                stage_channels=stage_channels,
-            )
+            if use_lpr_decoder:
+                self.seg_model = RawViTWithImage(vit_encoder)
+            else:
+                self.seg_model = ViT_FPN(
+                    vit_encoder=vit_encoder,
+                    fusion_channels=fusion_channels,
+                    stage_channels=stage_channels,
+                )
         else:
             raise NotImplementedError(
                 "FLAIR_ViT is encoder-only. Decoder mode should use the standard SMP decoder path."

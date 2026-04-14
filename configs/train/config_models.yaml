@@ -8,7 +8,7 @@ models:
         use_LPR_decoder: True
 
     vit_model:
-        use_ViT: False
+        use_ViT: True
         model_name: 'vit_base_patch16_224'
         pretrained: True
         fusion_channels: 256
