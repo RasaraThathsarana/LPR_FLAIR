@@ -8,13 +8,19 @@ if ! command -v conda &> /dev/null; then
     echo "Installing Miniconda..."
     wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     bash Miniconda3-latest-Linux-x86_64.sh -b
-    export PATH="$HOME/miniconda3/bin:$PATH"
+    
+    # Permanently initialize conda in your ~/.bashrc
+    ~/miniconda3/bin/conda init bash
 fi
 
-# Enable conda
+# Temporarily add conda to PATH so the next commands work inside this script
+export PATH="$HOME/miniconda3/bin:$PATH"
+
+# Enable conda commands (like activate) for the remainder of this script
 eval "$(conda shell.bash hook)"
 
 # Create env (safe if already exists)
 conda env create -f environment.yml || echo "Environment already exists"
 
 echo "===== SETUP DONE ====="
+echo "IMPORTANT: Run 'source ~/.bashrc' in your terminal to use conda."
