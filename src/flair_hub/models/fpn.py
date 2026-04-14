@@ -120,5 +120,4 @@ class ViT_FPN(nn.Module):
 
     def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
         vit_features = self.vit_encoder(x)
-        print(len(vit_features))
         return self.fpn(x, vit_features)

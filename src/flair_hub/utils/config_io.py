@@ -5,8 +5,6 @@ import shutil
 from pathlib import Path
 from typing import Dict
 from pytorch_lightning.utilities.rank_zero import rank_zero_only  
-import random
-
 
 
 def read_config(path: str) -> Dict[str, dict]:
@@ -49,9 +47,9 @@ def setup_environment(args) -> tuple:
     """
     config = read_config(args.config)
 
-    num = random.randint(1, 1000)
+    # num = random.randint(1, 1000)
     config['paths']['out_model_name'] = config['paths']['out_model_name'] + "_" + args.name
-    config['hyperparams']['seed'] = num
+    # config['hyperparams']['seed'] = num
     
     out_dir = Path(config['paths']["out_folder"], config['paths']["out_model_name"])
     out_dir.mkdir(parents=True, exist_ok=True)
