@@ -22,8 +22,8 @@ tasks:
     metrics_only: False
 
 hyperparams:
-    num_epochs: 15
-    batch_size: 2
+    num_epochs: 2
+    batch_size: 4
     seed: 2025
     learning_rate: 0.0002
 
