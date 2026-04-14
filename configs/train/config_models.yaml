@@ -1,5 +1,5 @@
 models: 
-    use_gradient_checkpointing: True
+    use_gradient_checkpointing: False
 
     monotemp_model: 
 
