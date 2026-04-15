@@ -40,7 +40,7 @@ hardware:
     num_nodes: 1
     gpus_per_node: 1
     strategy: 'auto' # ddp_find_unused_parameters_true if num_nodes > 1
-    num_workers: 0
+    num_workers: 4
     precision: '16-mixed'  # Enable mixed precision training
 
 saving:   
