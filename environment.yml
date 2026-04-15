@@ -1,13 +1,8 @@
 name: FLAIRHUB
 channels:
-  - pytorch
-  - nvidia
   - conda-forge
 dependencies:
   - python=3.11
-  - pytorch
-  - torchvision
-  - pytorch-cuda=12.9
   - pip
   - pip:
       - huggingface_hub
