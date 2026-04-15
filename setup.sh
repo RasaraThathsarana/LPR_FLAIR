@@ -29,7 +29,7 @@ GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader | head -n 1)
 echo "GPU: $GPU_NAME"
 
 # Decide CUDA version
-if [[ "$GPU_NAME" == *"H100"* ]] || [[ "$GPU_NAME" == *"RTX 40"* ]]; then
+if [[ "$GPU_NAME" == *"H100"* ]] || [[ "$GPU_NAME" == *"RTX 40"* ]] || [[ "$GPU_NAME" == *"A100"* ]]; then
     echo "Using CUDA 12.1"
     pip install torch==2.5.1 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 else
